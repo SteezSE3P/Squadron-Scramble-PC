@@ -9,9 +9,23 @@ using System.Text;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Storage;
+using SquadronScramble.Net;
+using XnaGamePad = Microsoft.Xna.Framework.Input.GamePad;
 
 namespace Microsoft.Xna.Framework.GamerServices
 {
+    public readonly struct GuideRequestInfo
+    {
+        public GuideRequestInfo(bool active, PlayerIndex player)
+        {
+            Active = active;
+            Player = player;
+        }
+
+        public bool Active { get; }
+        public PlayerIndex Player { get; }
+    }
+
     public enum MessageBoxIcon
     {
         None,
@@ -67,6 +81,19 @@ namespace Microsoft.Xna.Framework.GamerServices
         public static bool IsTrialMode => false;
 
         public static bool IsVisible => Active != null;
+
+        public static GuideRequestInfo ActiveRequestPlayer => new GuideRequestInfo(Active != null, Active?.Player ?? PlayerIndex.One);
+
+        /// <summary>
+        /// Online play: the popup's result, delivered to every PC on the same frame. Only the PC
+        /// that owns the controller interacts with the popup; it submits the result to the session.
+        /// </summary>
+        public static void CompleteFromNetwork(object result)
+        {
+            Active?.Finish(result);
+        }
+
+        internal static NetSession Net => NetSession.Current != null && NetSession.Current.InGame ? NetSession.Current : null;
 
         public static IAsyncResult BeginShowKeyboardInput(PlayerIndex player, string title, string description, string defaultText, AsyncCallback callback, object state)
         {
@@ -146,6 +173,7 @@ namespace Microsoft.Xna.Framework.GamerServices
         public readonly StringBuilder Text = new StringBuilder();
         public string[] Buttons = Array.Empty<string>();
         public int Selected;
+        public bool Submitted; // online: result sent, waiting for it to come back
 
         public void Finish(object result)
         {
@@ -192,10 +220,36 @@ namespace Microsoft.Xna.Framework.GamerServices
             }
         }
 
+        /// <summary>Whether this PC can interact with the popup, and which local pad drives it.</summary>
+        private static bool IsOwner(GuideRequest req, out PlayerIndex localPad)
+        {
+            localPad = req.Player;
+            NetSession net = Guide.Net;
+            if (net == null)
+                return true;
+            PlayerIndex? local = net.LocalPadForSlot(req.Player);
+            if (!local.HasValue || req.Submitted)
+                return false;
+            localPad = local.Value;
+            return true;
+        }
+
+        private static void Complete(GuideRequest req, object result)
+        {
+            NetSession net = Guide.Net;
+            if (net == null)
+            {
+                req.Finish(result);
+                return;
+            }
+            req.Submitted = true;
+            net.SubmitGuideResult(result);
+        }
+
         private void OnTextInput(object sender, TextInputEventArgs e)
         {
             GuideRequest req = Guide.Active;
-            if (req == null || req.Kind != GuideRequestKind.Keyboard || waitForRelease)
+            if (req == null || req.Kind != GuideRequestKind.Keyboard || waitForRelease || !IsOwner(req, out _))
                 return;
             char c = e.Character;
             if (char.IsControl(c))
@@ -210,7 +264,11 @@ namespace Microsoft.Xna.Framework.GamerServices
         {
             GuideRequest req = Guide.Active;
             KeyboardState keys = Keyboard.GetState();
-            GamePadState pad = req != null ? GamePad.GetState(req.Player) : default;
+            bool owner = false;
+            PlayerIndex localPad = PlayerIndex.One;
+            if (req != null)
+                owner = IsOwner(req, out localPad);
+            GamePadState pad = owner ? XnaGamePad.GetState(localPad) : default;
 
             if (req != lastRequest)
             {
@@ -219,7 +277,7 @@ namespace Microsoft.Xna.Framework.GamerServices
                 lastRequest = req;
             }
 
-            if (req != null)
+            if (req != null && owner)
             {
                 if (waitForRelease)
                 {
@@ -236,9 +294,9 @@ namespace Microsoft.Xna.Framework.GamerServices
                         if (Pressed(keys, Keys.Back) && req.Text.Length > 0)
                             req.Text.Length--;
                         if (accept)
-                            req.Finish(req.Text.ToString());
+                            Complete(req, req.Text.ToString());
                         else if (cancel)
-                            req.Finish(null);
+                            Complete(req, null);
                     }
                     else
                     {
@@ -248,9 +306,9 @@ namespace Microsoft.Xna.Framework.GamerServices
                         if (Pressed(keys, Keys.Right) || Pressed(keys, Keys.Down) || Pressed(pad, Buttons.DPadRight) || Pressed(pad, Buttons.DPadDown))
                             req.Selected = (req.Selected + 1) % count;
                         if (accept)
-                            req.Finish(req.Buttons.Length > 0 ? (int?)req.Selected : null);
+                            Complete(req, req.Buttons.Length > 0 ? (object)req.Selected : null);
                         else if (cancel)
-                            req.Finish(null);
+                            Complete(req, null);
                     }
                 }
             }
@@ -286,6 +344,16 @@ namespace Microsoft.Xna.Framework.GamerServices
             DrawFrame(box, new Color(200, 170, 90));
 
             float y = box.Y + 20;
+            NetSession net = Guide.Net;
+            if (net != null && (req.Submitted || !net.IsLocalSlot(req.Player)))
+            {
+                string who = req.Submitted ? "Sending..." : $"Waiting for {net.SlotOwnerName(req.Player)}...";
+                DrawText(req.Title, new Vector2(box.X + 30, y), new Color(255, 220, 120), box.Width - 60);
+                y += font.LineSpacing + 10;
+                DrawText(who, new Vector2(box.X + 30, y), Color.White, box.Width - 60);
+                spriteBatch.End();
+                return;
+            }
             DrawText(req.Title, new Vector2(box.X + 30, y), new Color(255, 220, 120), box.Width - 60);
             y += font.LineSpacing + 10;
             y = DrawWrapped(req.Description, new Vector2(box.X + 30, y), Color.White, box.Width - 60);
@@ -299,7 +367,7 @@ namespace Microsoft.Xna.Framework.GamerServices
                 string shown = req.Password ? new string('*', req.Text.Length) : req.Text.ToString();
                 bool caret = (gameTime.TotalGameTime.TotalSeconds % 1.0) < 0.5;
                 DrawText(shown + (caret ? "_" : " "), new Vector2(field.X + 10, field.Y + 8), Color.White, field.Width - 20);
-                DrawText("Type a name   [Enter] OK   [Esc] Cancel", new Vector2(box.X + 30, box.Bottom - font.LineSpacing - 15), Color.LightGray, box.Width - 60);
+                DrawText("[Enter] OK   [Esc] Cancel", new Vector2(box.X + 30, box.Bottom - font.LineSpacing - 15), Color.LightGray, box.Width - 60);
             }
             else
             {

@@ -166,8 +166,19 @@ public static class General
 		return 1.0;
 	}
 
+	// PC port: number of random draws so far. Online play compares it between PCs to detect desyncs.
+	public static long RandomCallCount;
+
 	public static int GetNextRandom(int i, int m)
 	{
+		RandomCallCount++;
 		return random.Next(i, m);
+	}
+
+	/// <summary>PC port: online play seeds every PC with the same value so the simulations match.</summary>
+	public static void SeedRandom(int seed)
+	{
+		random = new Random(seed);
+		RandomCallCount = 0;
 	}
 }
