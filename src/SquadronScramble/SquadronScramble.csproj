@@ -16,6 +16,13 @@
     <Product>Squadron Scramble</Product>
   </PropertyGroup>
   <ItemGroup>
+    <!-- MonoGame and the game load types by reflection (content readers, XmlSerializer):
+         keep them whole if the build is trimmed (PublishTrimmed=true). -->
+    <TrimmerRootAssembly Include="MonoGame.Framework" />
+    <TrimmerRootAssembly Include="SquadronScramble" />
+    <TrimmerRootAssembly Include="mscorlib" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.1.303" />
   </ItemGroup>
   <ItemGroup>

@@ -8,6 +8,10 @@
 //   Left pilot  (left half of the pad):  W A S D move/turn, Left Shift = fire (LT), Q = LB
 //   Right pilot (right half of the pad): Arrow keys move/turn, Right Ctrl = fire (RT), Right Shift = RB
 //   Buttons: Space = A, Escape = B, E = X, Tab = Y, Enter = Start, Backspace = Back
+//
+// In an online game the game code instead sees the synchronized controller states of the
+// current lockstep frame (see Net/NetSession.cs); this PC's own controllers are read with
+// GetLocalState and sent to the other players.
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using XnaGamePad = Microsoft.Xna.Framework.Input.GamePad;
@@ -36,12 +40,21 @@ namespace SquadronScramble
 
         public static GamePadState GetState(PlayerIndex playerIndex)
         {
-            return Filter(playerIndex, XnaGamePad.GetState(playerIndex));
+            Net.NetSession net = Net.NetSession.Current;
+            if (net != null && net.InGame)
+                return net.GetSlotState(playerIndex);
+            return GetLocalState(playerIndex);
         }
 
         public static GamePadState GetState(PlayerIndex playerIndex, GamePadDeadZone deadZone)
         {
-            return Filter(playerIndex, XnaGamePad.GetState(playerIndex, deadZone));
+            return GetState(playerIndex);
+        }
+
+        /// <summary>A controller on this PC (gamepad, or the keyboard's virtual pad).</summary>
+        public static GamePadState GetLocalState(PlayerIndex playerIndex)
+        {
+            return Filter(playerIndex, XnaGamePad.GetState(playerIndex));
         }
 
         private static GamePadState Filter(PlayerIndex playerIndex, GamePadState pad)
@@ -71,6 +84,13 @@ namespace SquadronScramble
 
         public static bool SetVibration(PlayerIndex playerIndex, float leftMotor, float rightMotor)
         {
+            Net.NetSession net = Net.NetSession.Current;
+            if (net != null && net.InGame)
+            {
+                // Only rumble controllers that are plugged into this PC.
+                PlayerIndex? local = net.LocalPadForSlot(playerIndex);
+                return local.HasValue && XnaGamePad.SetVibration(local.Value, leftMotor, rightMotor);
+            }
             return XnaGamePad.SetVibration(playerIndex, leftMotor, rightMotor);
         }
 
