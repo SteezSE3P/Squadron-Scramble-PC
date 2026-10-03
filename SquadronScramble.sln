@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{4B21D27B-FF0C-4D2B-94BF-65D2B8C3D03D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SquadronScramble", "src\SquadronScramble\SquadronScramble.csproj", "{E7F641CF-382F-42C5-B131-91E0A1C366AD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{FC492581-2E69-46F8-AD32-2606CC9A6F18}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XboxContentConverter", "tools\XboxContentConverter\XboxContentConverter.csproj", "{A92FFDD2-371A-4777-B6DA-9E2ECB403919}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E7F641CF-382F-42C5-B131-91E0A1C366AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E7F641CF-382F-42C5-B131-91E0A1C366AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E7F641CF-382F-42C5-B131-91E0A1C366AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E7F641CF-382F-42C5-B131-91E0A1C366AD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A92FFDD2-371A-4777-B6DA-9E2ECB403919}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A92FFDD2-371A-4777-B6DA-9E2ECB403919}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A92FFDD2-371A-4777-B6DA-9E2ECB403919}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A92FFDD2-371A-4777-B6DA-9E2ECB403919}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E7F641CF-382F-42C5-B131-91E0A1C366AD} = {4B21D27B-FF0C-4D2B-94BF-65D2B8C3D03D}
+		{A92FFDD2-371A-4777-B6DA-9E2ECB403919} = {FC492581-2E69-46F8-AD32-2606CC9A6F18}
+	EndGlobalSection
+EndGlobal
